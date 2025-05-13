@@ -1,0 +1,97 @@
+# %% [markdown]
+# # Spam Email Classifier
+# 
+# This notebook demonstrates a simple machine learning model to classify emails as spam or not spam (ham).
+
+# %%
+# Import necessary libraries
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# %%
+# Load the dataset (we'll use a sample dataset from sklearn for simplicity)
+from sklearn.datasets import fetch_20newsgroups
+
+# For a real project, you would use your actual spam dataset
+# Let's simulate a spam classification task using 20newsgroups data
+categories = ['alt.atheism', 'soc.religion.christian']
+newsgroups = fetch_20newsgroups(subset='all', categories=categories)
+
+# Convert to DataFrame
+df = pd.DataFrame({'text': newsgroups.data, 'target': newsgroups.target})
+
+# Rename targets to make it look like spam/ham
+df['target'] = df['target'].map({0: 'spam', 1: 'ham'})
+
+print(f"Dataset size: {len(df)}")
+print(df['target'].value_counts())
+
+# %%
+# Explore the data
+print("\nSample spam email:")
+print(df[df['target'] == 'spam']['text'].iloc[0][:500] + "...")
+
+print("\nSample ham email:")
+print(df[df['target'] == 'ham']['text'].iloc[0][:500] + "...")
+
+# %%
+# Preprocess the data
+# For simplicity, we'll just use TF-IDF vectorization without extensive text cleaning
+
+# Split into train and test sets
+X_train, X_test, y_train, y_test = train_test_split(
+    df['text'], df['target'], test_size=0.2, random_state=42
+)
+
+# Create TF-IDF vectorizer
+vectorizer = TfidfVectorizer(stop_words='english', max_features=1000)
+X_train_tfidf = vectorizer.fit_transform(X_train)
+X_test_tfidf = vectorizer.transform(X_test)
+
+# %%
+# Train a Naive Bayes classifier (good for text classification)
+model = MultinomialNB()
+model.fit(X_train_tfidf, y_train)
+
+# %%
+# Make predictions
+y_pred = model.predict(X_test_tfidf)
+
+# %%
+# Evaluate the model
+print("Model Evaluation:")
+print(f"Accuracy: {accuracy_score(y_test, y_pred):.2f}")
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred))
+
+# Confusion matrix
+cm = confusion_matrix(y_test, y_pred)
+plt.figure(figsize=(6,4))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
+            xticklabels=['spam', 'ham'], yticklabels=['spam', 'ham'])
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.title('Confusion Matrix')
+plt.show()
+
+# %%
+# Test with custom input
+def predict_spam(email_text):
+    email_vec = vectorizer.transform([email_text])
+    prediction = model.predict(email_vec)[0]
+    probability = model.predict_proba(email_vec).max()
+    print(f"Prediction: {prediction} (confidence: {probability:.2f})")
+
+# Test examples
+print("\nTesting with custom inputs:")
+print("\nExample 1 (should be spam):")
+predict_spam("Buy cheap pills now! Limited offer!!!")
+
+print("\nExample 2 (should be ham):")
+predict_spam("Hi there, just wanted to check how you're doing.")
